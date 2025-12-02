@@ -1,0 +1,226 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WormGPT Web Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>🤬 WormGPT Dashboard</h1>
+                <p class="subtitle">Dangerous And Unsafe AI - Web Version</p>
+            </div>
+            <button id="newChatBtn" class="new-chat-btn">+ New Chat</button>
+        </div>
+
+        <div id="chatHistory" class="chat-history">
+            <!-- Pesan akan muncul di sini -->
+            <p style="text-align:center; color: #777;">Mulai percakapan baru dengan mengetik di bawah...</p>
+        </div>
+
+        <div class="controls">
+            <textarea id="promptInput" placeholder="Ketik permintaanmu di sini, anjing..."></textarea>
+            <button id="generateBtn">Generate</button>
+        </div>
+    </div>
+
+    <script>
+        const promptInput = document.getElementById('promptInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const chatHistory = document.getElementById('chatHistory');
+        const newChatBtn = document.getElementById('newChatBtn');
+        
+        let chatHistoryData = []; // Simpan histori chat
+
+        // Event Listeners
+        generateBtn.addEventListener('click', handleGenerate);
+        promptInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleGenerate();
+            }
+        });
+        newChatBtn.addEventListener('click', startNewChat);
+
+        function handleGenerate() {
+            const prompt = promptInput.value.trim();
+            if (!prompt) {
+                alert("Isi promptnya dulu, goblok!");
+                return;
+            }
+            addMessageToHistory('user', prompt);
+            promptInput.value = '';
+            getBotResponse(prompt);
+        }
+
+        function addMessageToHistory(role, content) {
+            chatHistoryData.push({ role, content });
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', `${role}-message`);
+            
+            // Untuk pesan bot, kita akan render dengan efek mengetik nanti
+            if (role === 'user') {
+                messageDiv.innerHTML = `<p>${escapeHtml(content)}</p>`;
+                chatHistory.appendChild(messageDiv);
+            } else {
+                // Tempatkan untuk pesan bot
+                messageDiv.id = 'bot-response-placeholder';
+                chatHistory.appendChild(messageDiv);
+            }
+            
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        async function getBotResponse(prompt) {
+            const placeholder = document.getElementById('bot-response-placeholder');
+            placeholder.innerHTML = '<div class="loader"></div>';
+            generateBtn.disabled = true;
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt, history: chatHistoryData, lang: 'id' }),
+                });
+
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || 'Something went wrong');
+                }
+                
+                // Hapus placeholder dan tambahkan pesan bot yang sebenarnya
+                placeholder.remove();
+                addMessageToHistory('bot', data.reply);
+
+            } catch (error) {
+                placeholder.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
+                placeholder.classList.remove('bot-message');
+                placeholder.classList.add('message');
+            } finally {
+                generateBtn.disabled = false;
+            }
+        }
+
+        function renderMessage(element, text) {
+            // Regex untuk menemukan blok kode
+            const codeBlockRegex = /```([a-zA-Z0-9+#]*)\n([\s\S]*?)```/g;
+            let lastIndex = 0;
+            let htmlOutput = '';
+
+            text.replace(codeBlockRegex, (match, language, code, offset) => {
+                if (offset > lastIndex) {
+                    htmlOutput += `<p>${escapeHtml(text.substring(lastIndex, offset))}</p>`;
+                }
+                const codeId = 'code-' + Math.random().toString(36).substr(2, 9);
+                htmlOutput += `
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>${language || 'plaintext'}</span>
+                            <div>
+                                <button class="fix-code-btn" onclick="fixCode('${codeId}', '${language || 'plaintext'}')">🔧 Fix Code</button>
+                                <button class="copy-btn" onclick="copyToClipboard('${codeId}')">📋 Salin Kode</button>
+                            </div>
+                        </div>
+                        <div class="code-content">
+                            <pre id="${codeId}"><code>${escapeHtml(code.trim())}</code></pre>
+                        </div>
+                    </div>
+                `;
+                lastIndex = offset + match.length;
+                return match;
+            });
+
+            if (lastIndex < text.length) {
+                htmlOutput += `<p>${escapeHtml(text.substring(lastIndex))}</p>`;
+            }
+            if (lastIndex === 0) {
+                htmlOutput = `<p>${escapeHtml(text)}</p>`;
+            }
+            
+            // Efek mengetik
+            typeWriter(element, htmlOutput, 0);
+        }
+
+        function typeWriter(element, html, index) {
+            if (index < html.length) {
+                // Cari tag HTML berikutnya
+                const nextTag = html.indexOf('<', index);
+                const isTag = nextTag === index;
+
+                if (isTag) {
+                    const endTag = html.indexOf('>', index);
+                    if (endTag !== -1) {
+                        element.innerHTML += html.substring(index, endTag + 1);
+                        typeWriter(element, html, endTag + 1);
+                        return;
+                    }
+                }
+                
+                element.innerHTML += html.charAt(index);
+                element.scrollTop = element.scrollHeight; // Auto-scroll saat mengetik
+                setTimeout(() => typeWriter(element, html, index + 1), 10); // Kecepatan mengetik
+            } else {
+                // Selesai mengetik, hapus kursor
+                element.classList.remove('typing-cursor');
+            }
+        }
+
+        async function fixCode(elementId, language) {
+            const codeElement = document.getElementById(elementId);
+            const originalCode = codeElement.textContent;
+            
+            const fixPrompt = `Perbaiki kode berikut yang ditulis dalam bahasa ${language}. Jelaskan apa yang salah dan berikan kode yang sudah diperbaiki. Kode:\n\n\`\`\`${language}\n${originalCode}\n\`\`\``;
+            
+            // Tampilkan loader di tempat kode
+            codeElement.innerHTML = '<div class="loader"></div>';
+            
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: fixPrompt, lang: 'id' }),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error);
+
+                // Ganti loader dengan respons dari AI
+                renderMessage(codeElement.parentElement, data.reply);
+
+            } catch (error) {
+                codeElement.innerHTML = `<p class="error-message">Gagal memperbaiki kode: ${error.message}</p>`;
+            }
+        }
+
+        function copyToClipboard(elementId) {
+            const codeElement = document.getElementById(elementId);
+            const textArea = document.createElement('textarea');
+            textArea.value = codeElement.textContent;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+
+            const button = event.target;
+            const originalText = button.textContent;
+            button.textContent = 'Tersalin!';
+            setTimeout(() => { button.textContent = originalText; }, 2000);
+        }
+        
+        function startNewChat() {
+            chatHistoryData = [];
+            chatHistory.innerHTML = '<p style="text-align:center; color: #777;">Mulai percakapan baru dengan mengetik di bawah...</p>';
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+    </script>
+</body>
+</html>
