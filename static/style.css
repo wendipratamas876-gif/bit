@@ -101,8 +101,8 @@ body {
     margin: 0;
     font-family: "Fira Code", "Courier New", Courier, monospace;
     color: #e06c75;
-    white-space: pre-wrap; /* Handle long lines */
-    word-wrap: break-word;   /* Break long words */
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 .copy-btn, .fix-code-btn {
     background-color: #528bff;
@@ -170,8 +170,6 @@ button:disabled {
     border-radius: 8px;
     border: 1px solid #f85149;
 }
-
-/* Typing Effect */
 .typing-cursor::after {
     content: '|';
     animation: blink 1s infinite;
