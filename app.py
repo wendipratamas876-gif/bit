@@ -83,5 +83,15 @@ def generate_response():
             return jsonify({"error": "Quota exceeded. Please try again later."}), 429
         return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
+# --- KODE BARU ---
+import os
+
+# ... (kode lainnya di atas tetap sama) ...
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Ambil port dari environment variable 'PORT', default ke 5000 jika tidak ada
+    port = int(os.environ.get("PORT", 5000))
+    
+    # Railway menyediakan host eksternal, kita bind ke 0.0.0.0 agar bisa diakses dari luar
+    # Matikan debug mode di production untuk keamanan dan performa
+    app.run(host='0.0.0.0', port=port, debug=False)
