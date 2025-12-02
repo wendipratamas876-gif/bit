@@ -20,7 +20,6 @@
         </div>
 
         <div id="chatHistory" class="chat-history">
-            <!-- Pesan akan muncul di sini -->
             <p style="text-align:center; color: #777;">Mulai percakapan baru dengan mengetik di bawah...</p>
         </div>
 
@@ -36,9 +35,8 @@
         const chatHistory = document.getElementById('chatHistory');
         const newChatBtn = document.getElementById('newChatBtn');
         
-        let chatHistoryData = []; // Simpan histori chat
+        let chatHistoryData = [];
 
-        // Event Listeners
         generateBtn.addEventListener('click', handleGenerate);
         promptInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -64,12 +62,10 @@
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', `${role}-message`);
             
-            // Untuk pesan bot, kita akan render dengan efek mengetik nanti
             if (role === 'user') {
                 messageDiv.innerHTML = `<p>${escapeHtml(content)}</p>`;
                 chatHistory.appendChild(messageDiv);
             } else {
-                // Tempatkan untuk pesan bot
                 messageDiv.id = 'bot-response-placeholder';
                 chatHistory.appendChild(messageDiv);
             }
@@ -94,7 +90,6 @@
                     throw new Error(data.error || 'Something went wrong');
                 }
                 
-                // Hapus placeholder dan tambahkan pesan bot yang sebenarnya
                 placeholder.remove();
                 addMessageToHistory('bot', data.reply);
 
@@ -108,7 +103,6 @@
         }
 
         function renderMessage(element, text) {
-            // Regex untuk menemukan blok kode
             const codeBlockRegex = /```([a-zA-Z0-9+#]*)\n([\s\S]*?)```/g;
             let lastIndex = 0;
             let htmlOutput = '';
@@ -143,13 +137,11 @@
                 htmlOutput = `<p>${escapeHtml(text)}</p>`;
             }
             
-            // Efek mengetik
             typeWriter(element, htmlOutput, 0);
         }
 
         function typeWriter(element, html, index) {
             if (index < html.length) {
-                // Cari tag HTML berikutnya
                 const nextTag = html.indexOf('<', index);
                 const isTag = nextTag === index;
 
@@ -163,10 +155,9 @@
                 }
                 
                 element.innerHTML += html.charAt(index);
-                element.scrollTop = element.scrollHeight; // Auto-scroll saat mengetik
-                setTimeout(() => typeWriter(element, html, index + 1), 10); // Kecepatan mengetik
+                element.scrollTop = element.scrollHeight;
+                setTimeout(() => typeWriter(element, html, index + 1), 10);
             } else {
-                // Selesai mengetik, hapus kursor
                 element.classList.remove('typing-cursor');
             }
         }
@@ -177,7 +168,6 @@
             
             const fixPrompt = `Perbaiki kode berikut yang ditulis dalam bahasa ${language}. Jelaskan apa yang salah dan berikan kode yang sudah diperbaiki. Kode:\n\n\`\`\`${language}\n${originalCode}\n\`\`\``;
             
-            // Tampilkan loader di tempat kode
             codeElement.innerHTML = '<div class="loader"></div>';
             
             try {
@@ -189,7 +179,6 @@
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error);
 
-                // Ganti loader dengan respons dari AI
                 renderMessage(codeElement.parentElement, data.reply);
 
             } catch (error) {
@@ -220,7 +209,6 @@
         function escapeHtml(unsafe) {
             return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
-
     </script>
 </body>
 </html>
